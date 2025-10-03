@@ -1,9 +1,9 @@
 spring:
   datasource:
-    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
-    url: jdbc:sqlserver://localhost:1433;databaseName=bd_barbersclub;encrypt=true;trustServerCertificate=true
-    username: sa
-    password: "@ITB123456"
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://ep-lively-tooth-ad0wt5an-pooler.c-2.us-east-1.aws.neon.tech:5432/neondb?sslmode=require
+    username: neondb_owner
+    password: npg_Fl6UAGPXdY7n
   jpa:
     hibernate:
       ddl-auto: none
