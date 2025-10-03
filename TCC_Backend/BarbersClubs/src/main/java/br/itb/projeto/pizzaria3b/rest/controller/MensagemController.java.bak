@@ -1,0 +1,116 @@
+package br.itb.projeto.pizzaria3b.rest.controller;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import br.itb.projeto.pizzaria3b.model.entity.Cliente;
+import br.itb.projeto.pizzaria3b.model.entity.MensagensChat;
+import br.itb.projeto.pizzaria3b.model.repository.ClienteRepository;
+import br.itb.projeto.pizzaria3b.model.repository.MensagensChatRepository;
+
+@RestController
+@RequestMapping("/api/chat")
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000", "*"})
+public class MensagemController {
+
+    @Autowired
+    private MensagensChatRepository mensagemRepository;
+    
+    @Autowired
+    private ClienteRepository clienteRepository;
+    
+    @GetMapping("/clients")
+    public ResponseEntity<?> getClients() {
+        try {
+            List<Cliente> clientes = clienteRepository.findAll();
+            List<Map<String, Object>> resultado = new ArrayList<>();
+            
+            for (Cliente cliente : clientes) {
+                Map<String, Object> clienteMap = new HashMap<>();
+                clienteMap.put("id", cliente.getId());
+                clienteMap.put("name", cliente.getNome());
+                clienteMap.put("email", cliente.getEmail());
+                clienteMap.put("unread_count", 0); // Implementar contagem real depois
+                resultado.add(clienteMap);
+            }
+            
+            return ResponseEntity.ok(resultado);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Erro ao buscar clientes: " + e.getMessage());
+        }
+    }
+    
+    @GetMapping("/messages/{clientId}")
+    public ResponseEntity<?> getMessages(@PathVariable Integer clientId) {
+        try {
+            // Buscar mensagens do cliente
+            List<MensagensChat> mensagens = mensagemRepository.findByClienteId(clientId);
+            List<Map<String, Object>> resultado = new ArrayList<>();
+            
+            for (MensagensChat mensagem : mensagens) {
+                Map<String, Object> mensagemMap = new HashMap<>();
+                mensagemMap.put("id", mensagem.getId());
+                mensagemMap.put("message", mensagem.getMensagem());
+                mensagemMap.put("sender_id", mensagem.getRemetente().getId());
+                mensagemMap.put("receiver_id", mensagem.getDestinatario().getId());
+                mensagemMap.put("created_at", mensagem.getIniciadoEm());
+                resultado.add(mensagemMap);
+            }
+            
+            return ResponseEntity.ok(resultado);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Erro ao buscar mensagens: " + e.getMessage());
+        }
+    }
+    
+    @PostMapping("/send")
+    public ResponseEntity<?> sendMessage(@RequestBody Map<String, Object> dados) {
+        try {
+            Integer receiverId = Integer.parseInt(dados.get("receiver_id").toString());
+            String message = (String) dados.get("message");
+            
+            // Buscar cliente destinatário
+            Cliente destinatario = clienteRepository.findById(receiverId).orElse(null);
+            if (destinatario == null) {
+                return ResponseEntity.badRequest().body("Cliente destinatário não encontrado");
+            }
+            
+            // Buscar admin (remetente)
+            Cliente admin = clienteRepository.findById(1).orElse(null);
+            if (admin == null) {
+                return ResponseEntity.badRequest().body("Admin não encontrado");
+            }
+            
+            // Criar mensagem
+            MensagensChat mensagem = new MensagensChat();
+            mensagem.setMensagem(message);
+            mensagem.setLida(false);
+            mensagem.setMensagemBot(false);
+            mensagem.setIniciadoEm(LocalDateTime.now());
+            mensagem.setRemetente(admin);
+            mensagem.setDestinatario(destinatario);
+            
+            mensagemRepository.save(mensagem);
+            
+            return ResponseEntity.ok(Map.of("success", true, "message", "Mensagem enviada com sucesso"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Erro ao enviar mensagem: " + e.getMessage());
+        }
+    }
+}
